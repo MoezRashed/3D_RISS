@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt 
 
-
 def plot_sensor_data(x_data, y_data, z_data, time):
     plt.figure(figsize=(12, 6))
     plt.plot(time, x_data, label='X-axis')
