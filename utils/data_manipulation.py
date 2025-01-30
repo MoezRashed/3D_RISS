@@ -8,7 +8,7 @@ def count_repeats(data):
     count = Counter(data)
     for key, value in count.items():
         print(f"Element {key} is repeated {value} times.")
-
+    
 def config():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -20,16 +20,17 @@ def trim_data(data, start_time, end_time, time_index):
     start_idx = None
     end_idx = None
 
+    # Get the start_idx: Slice whatever is before it
     for i in range(len(data[time_index])):
         if float(data[time_index][i]) >= start_time:
             start_idx = i
             break
-
+    # Get the end_idx: Slice whatever is after it
     for i in range(len(data[time_index])-1, -1, -1):
         if float(data[time_index][i]) <= end_time:
             end_idx = i
             break
-
+    # Corner case
     if start_idx is None or end_idx is None:
         return [[] for _ in range(len(data))]
 
@@ -46,17 +47,17 @@ def load_imu(path):
     data               = path
     accelerometer_data = data['f']
     gyro_data          = data['w']
+
     # Extract Accelerometer data (x, y, z components)
     fx_data      = accelerometer_data['x'].flatten()
     fy_data      = accelerometer_data['y'].flatten()
     fz_data      = accelerometer_data['z'].flatten()
 
-    
-
     # Extract Gyro data          (x, y, z components)
     wx_data      = gyro_data['x'].flatten()  
     wy_data      = gyro_data['y'].flatten() 
     wz_data      = gyro_data['z'].flatten()  
+
     # Extract time data
     time         = data['IMU_second'].flatten()
 
@@ -64,9 +65,6 @@ def load_imu(path):
 
     if 'NovAtel' in path: 
         change_KVH_sign(fy_data, fz_data)
-    #     processed_data = downsample(processed_data, 6 , 200)
-    # else:
-    #     processed_data = downsample(processed_data, 6 , 20)
 
     processed_data = [fx_data, fy_data, fz_data, wx_data, wy_data, wz_data, time]
     
@@ -107,54 +105,27 @@ def load_gt(path):
     logging.info(f"First timestamp at: {time[0]}, Last timestamp at: {time[-1]}")
 
     processed_data = [altitude, latitude, longtiude, pitch, roll, azimuth , v_up, v_e, v_n, time]
-    # downsample(processed_data, 9, 5)
 
     return processed_data
-
-def downsample(data, time_index, factor):
-
-    # Initialize empty lists for downsampled data
-    downsampled_data = [[] for _ in range(len(data))]  
-    time_data = data[time_index]  
-
-    # Step 1: Find the first full timestep
-    first_full_time_idx = None
-    first_time_step = int(time_data[0])  # Convert first timestamp to an integer
-    
-    for i, t in enumerate(time_data):
-        if int(t) > first_time_step:  # Find when a new full timestep begins
-            first_full_time_idx = i
-            break
-
-    if first_full_time_idx is None:
-        first_full_time_idx = 0  # If no new timestep is found, start from the beginning
-
-    # Step 2: Start downsampling from this index using a fixed factor
-    for i in range(first_full_time_idx, len(time_data), factor):
-        next_i = min(i + factor, len(time_data))  # Avoid out-of-bounds indexing
-        
-        for j, component in enumerate(data):
-            chunk = component[i:next_i]  # Extract the current chunk
-            
-            if j == time_index:
-                downsampled_data[j].append(time_data[i])  # Take the first time value in chunk
-            else:
-                downsampled_data[j].append(np.mean(chunk))  # Compute mean for numerical data
-
-    return downsampled_data
 
 def downsample_by_mean(data, target_freq):
     
     downsampled_data = []
     
+    # Take the mean of every 'step' number of points [Target_Freq]
     for d in data:
-        # Take the mean of every 'step' number of points
         downsampled_d = [np.mean(d[i:i + target_freq]) for i in range(0, len(d), target_freq)]
         downsampled_data.append(downsampled_d)
     
-    time = downsampled_data[-1]  
+    time = downsampled_data[-1]
+
     floored_time = np.array(np.floor(time).astype(int)) 
+
+    # To mitigate if the last time does not have a full chunk
     if len(floored_time) > 1 and floored_time[-1] == floored_time[-2]: floored_time[-1] += 1
+
     downsampled_data[-1] = floored_time
+
+    logging.info(f"First timestamp at: {downsampled_data[-1][0]}, Last timestamp at: {downsampled_data[-1][-1]}")
     
     return downsampled_data
