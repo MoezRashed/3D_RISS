@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.io import loadmat
-from utils.plot import *
+from scipy.io                import loadmat
+from utils.plot              import *
 from utils.data_manipulation import *
-from utils.equations import *
+from utils.equations         import *
+from utils.imu               import *
 
 
 def main():
@@ -57,6 +58,7 @@ def main():
     # Load the First timestep of gt as ground truth
     alt_gt, lat_gt, long_gt, ve_gt, yaw_gt, pitch_gt, roll_gt, vn_gt, vu_gt = gt[0][0], gt[1][0], gt[2][0], gt[7][0], gt[5][0], gt[3][0], gt[4][0], gt[8][0], gt[6][0]
     # Initialize lists to store estimated states
+    velocity         = [ve_gt,vn_gt,vu_gt]
     estimated_lat    = []
     estimated_long   = []
     estimated_alt    = []
@@ -66,7 +68,18 @@ def main():
     estimated_v_n    = []
     estimated_v_e    = []
     estimated_v_up   = []
-    velocity         = [ve_gt,vn_gt,vu_gt]
+    # Initalize bias lists
+    fx_bias          = []
+    fy_bias          = []
+    fz_bias          = []
+    wz_bias          = []
+    
+    g                = 9.81
+    fx_bias_value    = 0.0
+    fy_bias_value    = 0.0
+    fz_bias_value    = 0.0
+    wz_bias_value    = 0.0
+    bias_calibrated  = False 
 
     # KVH // TPI loop
     for i in range(len(KVH[6])):
@@ -86,10 +99,19 @@ def main():
         wz            = KVH[5][i]
         v_od          = odo[0][i]
 
-        # if v_od == 0:
+        # ---- Vehicle Stoppage & Bias Calibration Logic ----
+  
+        # ---- End of Stoppage/Bias Logic ----
 
+        # # ---------------------
+        # # Start of Optimization [Mechanization stopping] 
+        # if v_od == 0:
+            
+        #     # Count stationary counter per stop
         #     stationary_counter += 1
+
         #     if stationary_counter >= 1:  # Changing the timesteps affects it alot
+
         #         estimated_lat.append(lat)
         #         estimated_long.append(long)
         #         estimated_alt.append(alt)
@@ -101,11 +123,33 @@ def main():
         #         estimated_v_up.append(velocity[2])
         #         continue
         
-        # Resetting the stationary_counter
-        stationary_counter = 0
+        # # Bias value calculation
+        # fx_bias_value = np.mean(fx_bias)
+        # fy_bias_value = np.mean(fy_bias)
+        # fz_bias_value = np.mean(fz_bias)
+        # wz_bias_value = np.mean(wz_bias)
+
+        # logging.info(f"Biases : {fx_bias_value},{fy_bias_value},{fz_bias_value},{wz_bias_value}")
+        # # Clearing the lists
+        # fx_bias.clear()
+        # fy_bias.clear()
+        # fz_bias.clear()
+        # wz_bias.clear()
+        # # Update fx, fy, fz, wz values
+        # fx           = fx - fx_bias_value
+        # fy           = fy - fy_bias_value
+        # fz           = fz - fz_bias_value
+        # wz           = wz - wz_bias_value
+
+        # logging.info(f"Sensor values : {fx},{fy},{fz},{wz}")
+
+        # # Resetting the stationary_counter
+        # stationary_counter = 0
+        # # End of Optimization
+        # # -------------------
 
         # Calculate acceleration odometer
-        acc_od        = (v_od - v_od_prev) / dt
+        acc_od        = (v_od- v_od_prev) / dt
         # Calculate pitch & roll 
         roll          = roll_calc(fx, fz, v_od, wz)
         pitch         = pitch_calc(fx, fy, fz, acc_od)
@@ -122,11 +166,11 @@ def main():
         delta_long    = (velocity[0] / ((radius + alt)  * np.cos(lat))) * dt
         delta_alt     = (velocity[2]) * dt  
         # Update lat, long & alt
-        lat  += delta_lat  
-        long += delta_long  
-        alt  += delta_alt 
+        lat          += delta_lat  
+        long         += delta_long  
+        alt          += delta_alt 
         # Update V_od
-        v_od_prev = v_od
+        v_od_prev     = v_od
 
         # Populating the lists
         estimated_lat.append(lat)
@@ -154,13 +198,15 @@ def main():
     groundtruth_long_deg = np.degrees(gt[2])
 
     # Append states to a list called estimated_states
-    estimated_states     = [estimated_v_n, estimated_v_e, estimated_v_up, estimated_lat, estimated_long, estimated_alt, estimated_yaw, estimated_pitch, estimated_roll]
+    estimated_states             = [estimated_v_n, estimated_v_e, estimated_v_up, estimated_lat, estimated_long, estimated_alt, estimated_yaw, estimated_pitch, estimated_roll]
 
-    delta_pn, delta_pe, delta_ph = delta_position_errors(gt, estimated_states, radius, radius)
+    delta_pn, delta_pe, delta_ph, delta_pu, delta_3d = delta_position_errors(gt, estimated_states, radius, radius)
 
     logging.info(f" RMSE Position North: {rmse(delta_pn)}, RMSE Position East: {rmse(delta_pe)}, RMSE Position Horizontal: {rmse(delta_ph)},")
     logging.info(f" Max Error Position North: {max_error(delta_pn)}, Max Error Position East: {max_error(delta_pe)}, Max Error Position Horizontal: {max_error(delta_ph)},")
     logging.info(f" Total Horizontal Distance: {total_horizontal_distane(gt, radius, radius)}")
+    logging.info(f" 2D RMS Percentage: {(rmse(delta_ph)/total_horizontal_distane(gt, radius, radius)) * 100} ")
+    logging.info(f" 3D RMSE : {rmse(delta_3d)} ")
 
     plt.figure(figsize=(12, 8))
 
@@ -169,13 +215,11 @@ def main():
             label='Ground Truth', color='green', linestyle='--', linewidth=2)
     plt.plot(estimated_long_deg, estimated_lat_deg, 
             label='Estimated', color='red', linewidth=1.5)
-
     plt.xlabel('Longitude (deg)')
     plt.ylabel('Latitude (deg)')
     plt.title('Ground Truth vs. Estimated Position')
     plt.legend()
     plt.grid(True)
-
     plt.savefig('trajectory_comparison_HighEnd.png', dpi=300)
     plt.show()
 

@@ -61,7 +61,7 @@ def load_imu(path):
     # Extract time data
     time         = data['IMU_second'].flatten()
 
-    logging.info(f"First timestamp at: {time[0]}, Last timestamp at: {time[-1]}")
+    # logging.info(f"First timestamp at: {time[0]}, Last timestamp at: {time[-1]}")
 
     if 'NovAtel' in path: 
         change_KVH_sign(fy_data, fz_data)
@@ -77,7 +77,7 @@ def load_odometer(data, time):
     data = data['CarChip_Speed'].flatten()
     time = time['odo_second'].flatten()
 
-    logging.info(f"First timestamp at: {time[0]}, Last timestamp at: {time[-1]}")
+    # logging.info(f"First timestamp at: {time[0]}, Last timestamp at: {time[-1]}")
 
     processed_data = [data, time]
    
@@ -102,7 +102,7 @@ def load_gt(path):
     v_e       = data['INS_ve'].flatten()
     v_n       = data['INS_vn'].flatten()
 
-    logging.info(f"First timestamp at: {time[0]}, Last timestamp at: {time[-1]}")
+    # logging.info(f"First timestamp at: {time[0]}, Last timestamp at: {time[-1]}")
 
     processed_data = [altitude, latitude, longtiude, pitch, roll, azimuth , v_up, v_e, v_n, time]
 
@@ -126,6 +126,6 @@ def downsample_by_mean(data, target_freq):
 
     downsampled_data[-1] = floored_time
 
-    logging.info(f"First timestamp at: {downsampled_data[-1][0]}, Last timestamp at: {downsampled_data[-1][-1]}")
+    # logging.info(f"First timestamp at: {downsampled_data[-1][0]}, Last timestamp at: {downsampled_data[-1][-1]}")
     
     return downsampled_data
