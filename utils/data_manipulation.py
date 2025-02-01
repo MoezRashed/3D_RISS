@@ -96,7 +96,7 @@ def load_gt(path):
    
     pitch     = np.deg2rad(data['INS_Pitch'].flatten())
     roll      = np.deg2rad(data['INS_Roll'].flatten() )
-    azimuth   = np.deg2rad(data['INS_Azi'].flatten()  )
+    azimuth   = -np.deg2rad(data['INS_Azi'].flatten()  )
     
     v_up      = data['INS_vu'].flatten()
     v_e       = data['INS_ve'].flatten()
