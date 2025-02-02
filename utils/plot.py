@@ -26,6 +26,7 @@ def plot_gyro_data(x_data, y_data, z_data, time):
 def plot_states(gt, estimated_states, imu_name):
     """
     Plot ground truth vs. estimated states for a given IMU.
+    Each velocity and orientation component is plotted in a separate subplot.
     
     Args:
         gt (list): Ground truth data.
@@ -33,18 +34,22 @@ def plot_states(gt, estimated_states, imu_name):
         imu_name (str): Name of the IMU (e.g., "KVH" or "TPI").
     """
     # Extract states
-    v_n_est, v_e_est, v_up_est = estimated_states[0], estimated_states[1], estimated_states[2]
-    lat_est, lon_est, alt_est = estimated_states[3], estimated_states[4], estimated_states[5]
+    v_n_est, v_e_est, v_up_est   = estimated_states[0], estimated_states[1], estimated_states[2]
+    lat_est, lon_est, alt_est    = estimated_states[3], estimated_states[4], estimated_states[5]
     yaw_est, pitch_est, roll_est = estimated_states[6], estimated_states[7], estimated_states[8]
 
-    # Time vector (assuming 1 Hz data)
+    # Time vector (based on the number of samples)
     time = np.arange(len(lat_est))
 
-    # Plot Position States
-    plt.figure(figsize=(15, 10))
+    # Create a figure with a 5x2 grid (10 subplots)
+    plt.figure(figsize=(15, 20))
+
+    # --------------------------
+    # Position States
+    # --------------------------
 
     # Latitude
-    plt.subplot(3, 2, 1)
+    plt.subplot(5, 2, 1)
     plt.plot(time, np.degrees(gt[1][:len(lat_est)]), 'g--', label='Ground Truth')
     plt.plot(time, np.degrees(lat_est), 'r-', label=f'{imu_name} Estimated')
     plt.xlabel('Time (s)')
@@ -54,7 +59,7 @@ def plot_states(gt, estimated_states, imu_name):
     plt.grid(True)
 
     # Longitude
-    plt.subplot(3, 2, 2)
+    plt.subplot(5, 2, 2)
     plt.plot(time, np.degrees(gt[2][:len(lon_est)]), 'g--', label='Ground Truth')
     plt.plot(time, np.degrees(lon_est), 'r-', label=f'{imu_name} Estimated')
     plt.xlabel('Time (s)')
@@ -64,7 +69,7 @@ def plot_states(gt, estimated_states, imu_name):
     plt.grid(True)
 
     # Altitude
-    plt.subplot(3, 2, 3)
+    plt.subplot(5, 2, 3)
     plt.plot(time, gt[0][:len(alt_est)], 'g--', label='Ground Truth')
     plt.plot(time, alt_est, 'r-', label=f'{imu_name} Estimated')
     plt.xlabel('Time (s)')
@@ -73,34 +78,79 @@ def plot_states(gt, estimated_states, imu_name):
     plt.legend()
     plt.grid(True)
 
-    # Velocity (North, East, Up)
-    plt.subplot(3, 2, 4)
+    # --------------------------
+    # Velocity States (Separate Plots)
+    # --------------------------
+
+    # North Velocity (V_N)
+    plt.subplot(5, 2, 4)
     plt.plot(time, gt[8][:len(v_n_est)], 'g--', label='Ground Truth V_N')
     plt.plot(time, v_n_est, 'r-', label=f'{imu_name} Estimated V_N')
-    plt.plot(time, gt[7][:len(v_e_est)], 'b--', label='Ground Truth V_E')
-    plt.plot(time, v_e_est, 'm-', label=f'{imu_name} Estimated V_E')
     plt.xlabel('Time (s)')
     plt.ylabel('Velocity (m/s)')
-    plt.title('Velocity vs. Time')
+    plt.title('Velocity North vs. Time')
     plt.legend()
     plt.grid(True)
 
-    # Orientation (Yaw, Pitch, Roll)
-    plt.subplot(3, 2, 5)
+    # East Velocity (V_E)
+    plt.subplot(5, 2, 5)
+    plt.plot(time, gt[7][:len(v_e_est)], 'g--', label='Ground Truth V_E')
+    plt.plot(time, v_e_est, 'r-', label=f'{imu_name} Estimated V_E')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Velocity (m/s)')
+    plt.title('Velocity East vs. Time')
+    plt.legend()
+    plt.grid(True)
+
+    # Up Velocity (V_U)
+    plt.subplot(5, 2, 6)
+    plt.plot(time, gt[6][:len(v_up_est)], 'g--', label='Ground Truth V_U')
+    plt.plot(time, v_up_est, 'r-', label=f'{imu_name} Estimated V_U')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Velocity (m/s)')
+    plt.title('Velocity Up vs. Time')
+    plt.legend()
+    plt.grid(True)
+
+    # --------------------------
+    # Orientation States (Separate Plots)
+    # --------------------------
+
+    # Yaw
+    plt.subplot(5, 2, 7)
     plt.plot(time, np.degrees(gt[5][:len(yaw_est)]), 'g--', label='Ground Truth Yaw')
     plt.plot(time, np.degrees(yaw_est), 'r-', label=f'{imu_name} Estimated Yaw')
-    plt.plot(time, np.degrees(gt[3][:len(pitch_est)]), 'b--', label='Ground Truth Pitch')
-    plt.plot(time, np.degrees(pitch_est), 'm-', label=f'{imu_name} Estimated Pitch')
-    plt.plot(time, np.degrees(gt[4][:len(roll_est)]), 'k--', label='Ground Truth Roll')
-    plt.plot(time, np.degrees(roll_est), 'c-', label=f'{imu_name} Estimated Roll')
     plt.xlabel('Time (s)')
-    plt.ylabel('Orientation (deg)')
-    plt.title('Orientation vs. Time')
+    plt.ylabel('Yaw (deg)')
+    plt.title('Yaw vs. Time')
     plt.legend()
     plt.grid(True)
 
+    # Pitch
+    plt.subplot(5, 2, 8)
+    plt.plot(time, np.degrees(gt[3][:len(pitch_est)]), 'g--', label='Ground Truth Pitch')
+    plt.plot(time, np.degrees(pitch_est), 'r-', label=f'{imu_name} Estimated Pitch')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Pitch (deg)')
+    plt.title('Pitch vs. Time')
+    plt.legend()
+    plt.grid(True)
+
+    # Roll
+    plt.subplot(5, 2, 9)
+    plt.plot(time, np.degrees(gt[4][:len(roll_est)]), 'g--', label='Ground Truth Roll')
+    plt.plot(time, np.degrees(roll_est), 'r-', label=f'{imu_name} Estimated Roll')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Roll (deg)')
+    plt.title('Roll vs. Time')
+    plt.legend()
+    plt.grid(True)
+
+    # --------------------------
     # Trajectory (Latitude vs. Longitude)
-    plt.subplot(3, 2, 6)
+    # --------------------------
+
+    plt.subplot(5, 2, 10)
     plt.plot(np.degrees(gt[2][:len(lon_est)]), np.degrees(gt[1][:len(lat_est)]), 'g--', label='Ground Truth')
     plt.plot(np.degrees(lon_est), np.degrees(lat_est), 'r-', label=f'{imu_name} Estimated')
     plt.xlabel('Longitude (deg)')
