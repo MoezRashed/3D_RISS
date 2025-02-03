@@ -1,9 +1,9 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.io import loadmat
-from utils.plot import *
+import numpy                 as np
+import matplotlib.pyplot     as plt
+from scipy.io                import loadmat
+from utils.plot              import *
 from utils.data_manipulation import *
-from utils.equations import *
+from utils.equations         import *
 
 def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
 
@@ -43,6 +43,7 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
     bias_calibrated  = False 
     stationary_counter = 0
     non_stationary_counter = 0
+    p_prev                 = 0
 
     for i in range(len(imu_data[6])):
         # Sensor measurements
@@ -53,14 +54,13 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
         # ---- Start of TPI Optimization ----
         if imu_name == "TPI":
 
-            if v_od == 0:
-                
+            if v_od <= 0.0:
+                non_stationary_counter = 0
                 # Collect sensor data for bias calibration
                 fx_current_value = -(np.cos(pitch) * np.sin(roll) * g) - fx
                 fy_current_value = (np.sin(pitch) * g) - fy
                 fz_current_value = (np.cos(pitch) * np.cos(roll) * g) -fz
                 wz_current_value = (we * np.sin(lat)) - wz
-
                 
                 fx_bias.append(fx_current_value)
                 fy_bias.append(fx_current_value)
@@ -70,10 +70,10 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
 
                 # Calibrate biases after 10 consecutive stationary timesteps
                 if stationary_counter >= 1 and not bias_calibrated:
-                    fx_bias_value = np.median(fx_bias)
-                    fy_bias_value = np.median(fy_bias)
-                    fz_bias_value = np.median(fz_bias)
-                    wz_bias_value = np.median(wz_bias)
+                    fx_bias_value = np.mean(fx_bias)
+                    fy_bias_value = np.mean(fy_bias)
+                    fz_bias_value = np.mean(fz_bias)
+                    wz_bias_value = np.mean(wz_bias)
 
                     bias_calibrated = True
 
@@ -89,6 +89,7 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
                 estimated_v_up.append(velocity[2])
                 continue
             else:
+               
                 # Reset counter and calibration flag when vehicle moves
                 stationary_counter      = 0
                 bias_calibrated         = False
@@ -105,7 +106,9 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
                 fy           = fy - (fy_bias_value)
                 fz           = fz - (fz_bias_value)
                 wz           = wz - (wz_bias_value)
-        # ----- End of TPI Optimization ----- 
+
+            
+        # # ----- End of TPI Optimization ----- 
 
         # Mechanization equations
         acc_od = (v_od - v_od_prev) / dt
@@ -134,6 +137,7 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
         long     += delta_long
         alt      += delta_alt
         v_od_prev = v_od
+        p_prev    = pitch
 
         # Store all states
         estimated_v_n.append(velocity[1])

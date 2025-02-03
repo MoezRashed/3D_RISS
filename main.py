@@ -1,11 +1,10 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.io                import loadmat
+import numpy                 as     np
+import matplotlib.pyplot     as     plt
 from utils.plot              import *
 from utils.data_manipulation import *
 from utils.equations         import *
 from utils.imu               import *
-
+from scipy.io                import loadmat
 
 def main():
 
@@ -20,21 +19,17 @@ def main():
     # Load IMU data from file
     data_KVH   = loadmat('/Users/moezrashed/Documents/Programming/Python/Project1/NovAtel/1.RAWIMU.mat'                          , simplify_cells=True) #High-end unit
     data_TPI   = loadmat('/Users/moezrashed/Documents/Programming/Python/Project1/TPI/1.TPI_data_denoised_LOD6_interpolated2.mat', simplify_cells=True) #Low-end unit
-
     # Load the ground truth from file
     data_GT    = loadmat('/Users/moezrashed/Documents/Programming/Python/Project1/NovAtel/3.INSPVA_Reference.mat'                , simplify_cells=True)
-
     # Load the Odometer data from file
     data_OD    = loadmat('/Users/moezrashed/Documents/Programming/Python/Project1/OBDII_data/CarChip_Speed.mat'                  , simplify_cells=True)
     time_OD    = loadmat('/Users/moezrashed/Documents/Programming/Python/Project1/OBDII_data/odo_second.mat'                     , simplify_cells=True)
 
     # Load the ground truth data
     gt         = load_gt(data_GT)
-
     # Load the sensor data from the IMU units
     TPI        = load_imu(data_TPI)
     KVH        = load_imu(data_KVH)
-
     # Load the Odometer data
     odo        = load_odometer(data_OD, time_OD)
 
@@ -67,31 +62,42 @@ def main():
     )
 
     # Log KVH errors
-    logging.info("\n=== KVH Performance ===")
-    logging.info(f"RMSE North: {rmse(delta_pn_kvh):.3f} m")
-    logging.info(f"RMSE East: {rmse(delta_pe_kvh):.3f} m")
-    logging.info(f"RMSE Up: {rmse(delta_pu_kvh):.3f} m")
-    logging.info(f"RMSE Horizontal: {rmse(delta_ph_kvh):.3f} m")
+    logging.info("\n===== KVH Performance =====")
+    logging.info(f"RMSE North:               {rmse(delta_pn_kvh):.3f} m")
+    logging.info(f"RMSE East:                {rmse(delta_pe_kvh):.3f} m")
+    logging.info(f"RMSE Up:                  {rmse(delta_pu_kvh):.3f} m")
+    logging.info(f"RMSE Horizontal:          {rmse(delta_ph_kvh):.3f} m")
     logging.info(f"Max Error Position North: {max_error(delta_pn_kvh):.3f} m")
-    logging.info(f"Max Error Position East: {max_error(delta_pe_kvh):.3f} m")
-    logging.info(f"Max Error Position Up: {max_error(delta_pu_kvh):.3f} m")
-    logging.info(f"3D RMSE: {rmse(delta_3d_kvh):.3f} m")
+    logging.info(f"Max Error Position East:  {max_error(delta_pe_kvh):.3f} m")
+    logging.info(f"2D RMS Percentage:       {(rmse(delta_ph_kvh)/total_horizontal_distane(gt, radius, radius)) * 100} %")
+    logging.info(f"Max Error Position Up:    {max_error(delta_pu_kvh):.3f} m")
+    logging.info(f"3D RMSE:                  {rmse(delta_3d_kvh):.3f} m")
 
     # Log TPI errors
-    logging.info("\n=== TPI Performance ===")
-    logging.info(f"RMSE North: {rmse(delta_pn_tpi):.3f} m")
-    logging.info(f"RMSE East: {rmse(delta_pe_tpi):.3f} m")
-    logging.info(f"RMSE Up: {rmse(delta_pu_tpi):.3f} m")
-    logging.info(f"RMSE Horizontal: {rmse(delta_ph_tpi):.3f} m")
+    logging.info("\n===== TPI Performance =====")
+    logging.info(f"RMSE North:               {rmse(delta_pn_tpi):.3f} m")
+    logging.info(f"RMSE East:                {rmse(delta_pe_tpi):.3f} m")
+    logging.info(f"RMSE Up:                  {rmse(delta_pu_tpi):.3f} m")
+    logging.info(f"RMSE Horizontal:          {rmse(delta_ph_tpi):.3f} m")
     logging.info(f"Max Error Position North: {max_error(delta_pn_tpi):.3f} m")
-    logging.info(f"Max Error Position East: {max_error(delta_pe_tpi):.3f} m")
-    logging.info(f"Max Error Position Up: {max_error(delta_pu_tpi):.3f} m")
-    logging.info(f"3D RMSE: {rmse(delta_3d_tpi):.3f} m")
+    logging.info(f"Max Error Position East:  {max_error(delta_pe_tpi):.3f} m")
+    logging.info(f"Max Error Position Up:    {max_error(delta_pu_tpi):.3f} m")
+    logging.info(f"2D RMS Percentage:       {((rmse(delta_ph_tpi)/total_horizontal_distane(gt, radius, radius)) * 100):.3f} %")
+    logging.info(f"3D RMSE:                  {rmse(delta_3d_tpi):.3f} m")
 
-    # Plot states for KVH
-    plot_states(gt, kvh_states, "KVH")
-    # Plot states for TPI
-    plot_states(gt, tpi_states, "TPI")
+    # Plot states for KVH & TPI
+    plot_states(gt, kvh_states, "KVH", delta_pn_kvh, delta_pe_kvh)
+    plot_states(gt, tpi_states, "TPI", delta_pn_tpi, delta_pe_tpi)
+
+    # Convert estimated latitudes and longitudes to degrees
+    kvh_lat_deg = np.degrees(kvh_states[3])  
+    kvh_lon_deg = np.degrees(kvh_states[4])  
+    tpi_lat_deg  = np.degrees(tpi_states[3])  
+    tpi_lon_deg = np.degrees(tpi_states[4])  
+
+    # # Store KVH & TPI trajectories in kml format to display on Google Earth
+    # plot_trajectory_on_google_earth(kvh_lat_deg, kvh_lon_deg, "kvh_trajectory.kml")
+    # plot_trajectory_on_google_earth(tpi_lat_deg, tpi_lon_deg, "tpi_trajectory.kml")
 
 
 if __name__ == "__main__":

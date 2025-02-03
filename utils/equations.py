@@ -74,6 +74,3 @@ def rmse(delta):
 
 def max_error(delta):
     return max(delta)
-
-# def online_caibration():
-# def radius_calculation():
