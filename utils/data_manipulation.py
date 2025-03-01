@@ -38,6 +38,36 @@ def trim_data(data, start_time, end_time, time_index):
 
     return trimmed_data
 
+def load_pos(path):
+
+    data               = path
+    
+    # 'BGP_Alt', 'BGP_Alt_std', 'BGP_Lat', 'BGP_Lat_std', 'BGP_Long', 'BGP_Long_std'
+    alt      = data['BGP_Alt'].flatten()
+    lat      = data['BGP_Lat'].flatten()
+    long     = data['BGP_Long'].flatten()
+    alt_std  = data['BGP_Alt_std'].flatten()
+    lat_std  = data['BGP_Lat_std'].flatten()
+    long_std = data['BGP_Long_std'].flatten()
+    time     = data['BGP_second'].flatten()
+
+    processed_data = [alt,lat,long,alt_std,lat_std,long_std,time]
+
+    return processed_data
+
+def load_vel(path):
+
+    data               = path
+    
+    ve      = data['BGV_ve'].flatten()
+    vn      = data['BGV_vn'].flatten()
+    vu     = data['BGV_vu'].flatten()
+    time     = data['BGV_second'].flatten()
+
+    processed_data = [ve,vn,vu,time]
+
+    return processed_data
+
 
 def load_imu(path):
 

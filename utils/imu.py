@@ -5,7 +5,7 @@ from utils.plot              import *
 from utils.data_manipulation import *
 from utils.equations         import *
 
-def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
+def process_imu(imu_data, imu_name, odo, gt, radius, we, dt, pos, vel):
 
     # Initialize state containers
     estimated_v_n   = []
@@ -17,42 +17,71 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
     estimated_yaw   = []
     estimated_pitch = []
     estimated_roll  = []
+    estimated_a_od  = []
+
     
     # Initial conditions from ground truth
-    velocity  = [gt[7][0], gt[8][0], gt[6][0]]  # [ve, vn, vu]
-    alt       = gt[0][0]
-    lat       = gt[1][0]
-    long      = gt[2][0]
-    yaw       = gt[5][0]
-    pitch     = gt[3][0]
-    roll      = gt[4][0]
-    v_od_prev = 0
+    velocity        = [gt[7][0], gt[8][0], gt[6][0]]  # [ve, vn, vu]
+    alt             = gt[0][0]
+    lat             = gt[1][0]
+    long            = gt[2][0]
+    yaw             = gt[5][0]
+    pitch           = gt[3][0]
+    roll            = gt[4][0]
+    v_od_prev       = 0
+
+    # Reference Position Data
+    alt_ref         = pos[0]
+    lat_ref         = pos[1]
+    long_ref        = pos[2]
+    alt_ref_std     = pos[3]
+    lat_ref_std     = pos[4]
+    long_ref_std    = pos[5]
+
+    # Reference Velocity Data
+    ve_ref          = vel[0]
+    vn_ref          = vel[1]
+    vu_ref          = vel[2]
 
     # Initalize bias lists
-    fx_bias          = []
-    fy_bias          = []
-    fz_bias          = []
-    wz_bias          = []
+    fx_bias         = []
+    fy_bias         = []
+    fz_bias         = []
+    wz_bias         = []
     
-    g                = 9.80577
-    acc_od           = 0.0
-    fx_bias_value    = 0.0
-    fy_bias_value    = 0.0
-    fz_bias_value    = 0.0
-    wz_bias_value    = 0.0
-    bias_calibrated  = False 
-    stationary_counter = 0
+    g               = 9.80577
+    acc_od          = 0.0
+    fx_bias_value   = 0.0
+    fy_bias_value   = 0.0
+    fz_bias_value   = 0.0
+    wz_bias_value   = 0.0
+    bias_calibrated        = False 
+    stationary_counter     = 0
     non_stationary_counter = 0
     p_prev                 = 0
 
     for i in range(len(imu_data[6])):
+
         # Sensor measurements
         fx, fy, fz = imu_data[0][i], imu_data[1][i], imu_data[2][i]
         wz         = imu_data[5][i]
         v_od       = odo[0][i]
 
+        # KVH
+        bwz_corr_time = 3 * 3600
+        bwz_stdv      = 0.01* np.pi/180
+
+        a_od_corr_time = 0.1 * 3600
+        a_od_stdv      = 10
+
         # ---- Start of TPI Optimization ----
         if imu_name == "TPI":
+
+            bwz_corr_time = 4 * 3600
+            bwz_stdv      = 0.01* np.pi/180
+
+            a_od_corr_time = 0.1 * 3600
+            a_od_stdv      = 10
 
             if v_od <= 0.0:
                 non_stationary_counter = 0
@@ -107,7 +136,6 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
                 fz           = fz - (fz_bias_value)
                 wz           = wz - (wz_bias_value)
 
-            
         # # ----- End of TPI Optimization ----- 
 
         # Mechanization equations
@@ -125,6 +153,11 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
         yaw            = yaw % (2 * np.pi)
         
         # Velocity transformation
+
+        # First component --> VE
+        # Second component--> VN
+        # Third component --> VU
+
         velocity = transform_to_navigation_frame(yaw, pitch, v_od)
         
         # Position update
@@ -132,12 +165,20 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
         delta_long = (velocity[0] / ((radius + alt) * np.cos(lat))) * dt
         delta_alt  = velocity[2] * dt
         
-        # Update states
+        # Update states before kalman filter 
         lat      += delta_lat
         long     += delta_long
         alt      += delta_alt
         v_od_prev = v_od
         p_prev    = pitch
+
+        # I need the first 6 values for the Z calculation from IMU_Calculations
+        IMU_calculations = [lat, long, alt, velocity[0], velocity[1], velocity[2], yaw, wz, acc_od]
+        # imported the gps_pos & gps_vel data before the loop, they include _ref in variable name, pass it to process_imu, and use it with (i) per timestep.
+        
+        # Kalman filter comes here 
+
+        # Update states again after Kalman Filter to implement loosely coupled
 
         # Store all states
         estimated_v_n.append(velocity[1])
@@ -149,9 +190,11 @@ def process_imu(imu_data, imu_name, odo, gt, radius, we, dt):
         estimated_yaw.append(yaw)
         estimated_pitch.append(pitch)
         estimated_roll.append(roll)
+        estimated_a_od.append(acc_od)
 
     return [
         estimated_v_n, estimated_v_e, estimated_v_up,
         estimated_lat, estimated_long, estimated_alt,
-        estimated_yaw, estimated_pitch, estimated_roll
+        estimated_yaw, estimated_pitch, estimated_roll,
+        estimated_a_od
     ]
